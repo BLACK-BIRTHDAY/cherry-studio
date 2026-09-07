@@ -242,6 +242,7 @@ interface AgentRightPaneActions {
   canOpenArtifactFile: boolean
   openAgentToolFlow: (input: AgentToolFlowOpenInput) => void
   openArtifactFile: (path: string) => void
+  openExternalUrl: (url: string) => void
   closeFilePreview: () => void
   setFileEditMode: (mode: AgentFileEditorMode) => void
   setSelectedFile: (file: string | null) => void
@@ -347,7 +348,19 @@ function AgentRightPaneActionsProvider({
   workspaceCurrent
 }: AgentRightPaneActionsProviderProps) {
   const { t } = useTranslation()
+  const [openLinksInBrowser] = usePreference('app.browser.open_links_in_browser')
   const panelActions = useRightPanelActions()
+  const openExternalUrl = useCallback(
+    (url: string) => {
+      if (openLinksInBrowser && /^https?:\/\//i.test(url) && panelActions.canOpen(BROWSER_PANE_ID)) {
+        openBrowserUrl(url)
+        panelActions.tryOpen(BROWSER_PANE_ID, { userInitiated: true })
+        return
+      }
+      window.open(url, '_blank', 'noopener,noreferrer')
+    },
+    [openBrowserUrl, openLinksInBrowser, panelActions]
+  )
   useIpcOn('browser.pane.open_requested', (request) => {
     if (request.sessionId !== sessionId) return
     if (request.url) openBrowserUrl(request.url)
@@ -426,6 +439,7 @@ function AgentRightPaneActionsProvider({
       canOpenArtifactFile,
       openAgentToolFlow,
       openArtifactFile,
+      openExternalUrl,
       closeFilePreview,
       setFileEditMode,
       setSelectedFile: selectFile,
@@ -438,6 +452,7 @@ function AgentRightPaneActionsProvider({
       closeFilePreview,
       openAgentToolFlow,
       openArtifactFile,
+      openExternalUrl,
       selectFile,
       setFileEditMode,
       setFileTreeExpandedIds,
@@ -963,6 +978,7 @@ const AgentToolFlowMessageList = memo(function AgentToolFlowMessageList({
     hasOlder: false,
     openAgentToolFlow: actions.openAgentToolFlow,
     openArtifactFile: actions.canOpenArtifactFile ? actions.openArtifactFile : undefined,
+    openExternalUrl: actions.openExternalUrl,
     messageNavigation,
     // Tool output is commonly workspace-relative (`dist/report.md`). Without the
     // root, open/reveal cannot resolve it and the directory probe fails closed.
